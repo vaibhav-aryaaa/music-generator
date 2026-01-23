@@ -44,12 +44,14 @@ def prepare_input(notes, seq_len=100):
 
     return network_input, pitch_names
 
-def sample(preds,temperature=0.9):
-  preds=np.log(preds+ 1e-8) / temperature
-  preds=np.exp(preds) / np.sum(np.exp(preds))
-  return np.random.choice(len(preds), p=preds)
+def sample(preds, temperature=1.0):
+    preds = np.asarray(preds).astype("float64")
+    preds = np.log(preds + 1e-8) / temperature
+    exp_preds = np.exp(preds)
+    preds = exp_preds / np.sum(exp_preds)
+    return np.random.choice(len(preds), p=preds)
 
-def generate_music(model, net_input, pitch_names, temperature=0.9):
+def generate_music(model, net_input, pitch_names, temperature=0.9,length=300):
   int_to_note={i: n for i, n in enumerate(pitch_names)}
 
   start=np.random.randint(0, len(net_input)-1)
@@ -57,7 +59,7 @@ def generate_music(model, net_input, pitch_names, temperature=0.9):
 
   output=[]
 
-  for _ in range(300):
+  for _ in range(length):
     inp=np.reshape(pattern,(1,len(pattern),1))
     pred=model.predict(inp,verbose=0)[0]
     index=sample(pred,temperature)
