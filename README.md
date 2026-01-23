@@ -39,6 +39,7 @@ The model is trained on MIDI data converted into note/chord sequences using `mus
 * **Google Colab**
 
 ## Project Structure
+```text
 music_generator/
 │
 ├── model.py # Model architecture & helper functions
