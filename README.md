@@ -49,6 +49,7 @@ music_generator/
 │ └── notes
 ├── generate.ipynb # Local generation testing
 └── README.md
+```
 
 ---
 
