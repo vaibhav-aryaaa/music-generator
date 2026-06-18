@@ -15,6 +15,7 @@ __pycache__/
 data/midi_dataset/
 data/nottingham*
 data/notes
+data/*.pkl
 
 # Generated Files
 generated.mid
