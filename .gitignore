@@ -1,0 +1,27 @@
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# macOS System Files
+.DS_Store
+
+# Datasets
+data/midi_dataset/
+data/nottingham*
+data/notes
+
+# Generated Files
+generated.mid
+ai_music.mid
+
+# Model Weights
+*.hdf5
+*.h5
+*.keras
+models/
