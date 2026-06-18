@@ -24,4 +24,4 @@ ai_music.mid
 *.hdf5
 *.h5
 *.keras
-models/
+# models/ (allow tracking tokenizer.json, weights are ignored by extensions)
