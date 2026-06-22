@@ -4,7 +4,7 @@ import pickle
 import numpy as np
 import tensorflow as tf
 from miditok import REMI
-from model import TokenAndPositionEmbedding, TransformerBlock, CausalSelfAttention
+from src.model import TokenAndPositionEmbedding, TransformerBlock, CausalSelfAttention
 
 # Paths
 WORKSPACE = "/Users/vaibhavarya/Developer/music-generator"

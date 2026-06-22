@@ -3,7 +3,7 @@ import pickle
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
-from model import build_model
+from src.model import build_model
 
 # Configuration
 WORKSPACE = "/Users/vaibhavarya/Developer/music-generator"
