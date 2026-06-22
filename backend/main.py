@@ -85,11 +85,9 @@ class GenerateRequest(BaseModel):
 def read_root():
     return {"message": "AI Music Generator API is running!", "available_moods": list(style_prefixes.keys())}
 
-@app.post("/generate")
-def generate_midi(req: GenerateRequest):
+def _generate_score(req: GenerateRequest):
     """
-    Generates a MIDI file based on the requested style and parameters,
-    and returns the file directly as a download response.
+    Core sequence generation logic that decodes and dumps MIDI to a temp file.
     """
     global model, tokenizer, style_prefixes
     
@@ -101,41 +99,73 @@ def generate_midi(req: GenerateRequest):
         
     style_id = style_prefixes[req.mood]
     
+    # Generate token sequence autoregressively
+    sequence = [style_id]
+    context_len = 255  # SEQ_LEN - 1 (Window size 256)
+    
+    for _ in range(req.length):
+        # Form input window prepended with the style token
+        if len(sequence) > context_len:
+            inputs = [style_id] + sequence[-context_len:]
+        else:
+            inputs = sequence
+            
+        inputs_tensor = tf.expand_dims(inputs, 0)
+        predictions = model(inputs_tensor, training=False)
+        logits = predictions[0, -1, :]
+        
+        next_token = top_p_sampling(logits, p=req.top_p, temperature=req.temp)
+        sequence.append(next_token)
+        
+    # Extract token IDs without the style prefix
+    midi_ids = sequence[1:]
+    
+    # Decode back to a symusic Score object
+    score = tokenizer.decode([midi_ids])
+    
+    # Create a temporary file to save the MIDI data
+    temp_midi = tempfile.NamedTemporaryFile(delete=False, suffix=".mid")
+    score.dump_midi(temp_midi.name)
+    temp_midi.close()
+    
+    return score, temp_midi.name
+
+@app.post("/generate")
+def generate_midi(req: GenerateRequest):
+    """
+    Generates a MIDI file based on the requested style and parameters,
+    and returns a JSON payload containing the base64-encoded MIDI file 
+    along with parsed note event details for the custom frontend visualizer.
+    """
     try:
-        # Generate token sequence autoregressively
-        sequence = [style_id]
-        context_len = 255  # SEQ_LEN - 1 (Window size 256)
+        import base64
+        score, temp_midi_path = _generate_score(req)
         
-        for _ in range(req.length):
-            # Form input window prepended with the style token
-            if len(sequence) > context_len:
-                inputs = [style_id] + sequence[-context_len:]
-            else:
-                inputs = sequence
-                
-            inputs_tensor = tf.expand_dims(inputs, 0)
-            predictions = model(inputs_tensor, training=False)
-            logits = predictions[0, -1, :]
+        # Read MIDI file bytes and encode to base64 string
+        with open(temp_midi_path, "rb") as f:
+            midi_bytes = f.read()
+        midi_base64 = base64.b64encode(midi_bytes).decode("utf-8")
+        
+        # Extract notes structure for custom piano roll visualizer
+        notes_data = []
+        if len(score.tracks) > 0:
+            for note in score.tracks[0].notes:
+                notes_data.append({
+                    "pitch": int(note.pitch),
+                    "time": float(note.time),
+                    "duration": float(note.duration),
+                    "velocity": int(note.velocity)
+                })
+        
+        # Remove temporary file
+        if os.path.exists(temp_midi_path):
+            os.remove(temp_midi_path)
             
-            next_token = top_p_sampling(logits, p=req.top_p, temperature=req.temp)
-            sequence.append(next_token)
-            
-        # Extract token IDs without the style prefix
-        midi_ids = sequence[1:]
-        
-        # Decode back to a symusic Score object
-        score = tokenizer.decode([midi_ids])
-        
-        # Create a temporary file to save the MIDI data
-        temp_midi = tempfile.NamedTemporaryFile(delete=False, suffix=".mid")
-        score.dump_midi(temp_midi.name)
-        temp_midi.close()
-        
-        return FileResponse(
-            temp_midi.name,
-            media_type="audio/midi",
-            filename=f"generated_{req.mood}.mid"
-        )
+        return {
+            "midi_base64": midi_base64,
+            "notes": notes_data,
+            "mood": req.mood
+        }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
@@ -164,8 +194,10 @@ def synthesize_audio(req: GenerateRequest):
         )
         
     # Generate MIDI file first
-    midi_response = generate_midi(req)
-    temp_midi_path = midi_response.path
+    try:
+        score, temp_midi_path = _generate_score(req)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
     
     try:
         # Create a temporary file to save the synthesized WAV
