@@ -25,8 +25,11 @@ async def lifespan(app: FastAPI):
     """
     global model, tokenizer, style_prefixes
     
-    # Paths
-    workspace = "/Users/vaibhavarya/Developer/music-generator"
+    # Paths (supporting dynamic fallback for Docker/portability)
+    workspace = os.getenv("WORKSPACE_PATH", "/Users/vaibhavarya/Developer/music-generator")
+    if not os.path.exists(workspace):
+        workspace = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        
     model_path = os.path.join(workspace, "models", "best_model.keras")
     tokenizer_path = os.path.join(workspace, "models", "tokenizer.json")
     dataset_metadata_path = os.path.join(workspace, "data", "tokenized_sequences.pkl")
@@ -111,7 +114,8 @@ def _generate_score(req: GenerateRequest):
             inputs = sequence
             
         inputs_tensor = tf.expand_dims(inputs, 0)
-        predictions = model(inputs_tensor, training=False)
+        with tf.device('/CPU:0'):
+            predictions = model(inputs_tensor, training=False)
         logits = predictions[0, -1, :]
         
         next_token = top_p_sampling(logits, p=req.top_p, temperature=req.temp)

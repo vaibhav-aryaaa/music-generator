@@ -6,8 +6,11 @@ import tensorflow as tf
 from miditok import REMI
 from src.model import TokenAndPositionEmbedding, TransformerBlock, CausalSelfAttention
 
-# Paths
-WORKSPACE = "/Users/vaibhavarya/Developer/music-generator"
+# Paths (supporting dynamic fallback for portability)
+WORKSPACE = os.getenv("WORKSPACE_PATH", "/Users/vaibhavarya/Developer/music-generator")
+if not os.path.exists(WORKSPACE):
+    WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 TOKENIZED_DATA_PATH = os.path.join(WORKSPACE, "data", "tokenized_sequences.pkl")
 MODEL_PATH = os.path.join(WORKSPACE, "models", "best_model.keras")
 TOKENIZER_PATH = os.path.join(WORKSPACE, "models", "tokenizer.json")
@@ -74,7 +77,8 @@ def generate_music(model, tokenizer, style_id, gen_length=300, seq_len=256, temp
         
         # Get model prediction log probabilities (logits)
         # Predictions shape: (1, seq_len, vocab_size)
-        predictions = model(inputs_tensor, training=False)
+        with tf.device('/CPU:0'):
+            predictions = model(inputs_tensor, training=False)
         
         # Extract predictions for the last token in the sequence: shape (vocab_size,)
         logits = predictions[0, -1, :]
