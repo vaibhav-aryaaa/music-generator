@@ -3,10 +3,16 @@ import pickle
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
-from src.model import build_model
+try:
+    from src.model import build_model
+except ImportError:
+    from model import build_model
 
-# Configuration
-WORKSPACE = "/Users/vaibhavarya/Developer/music-generator"
+# Configuration (supporting dynamic fallback for portability)
+WORKSPACE = os.getenv("WORKSPACE_PATH", "/Users/vaibhavarya/Developer/music-generator")
+if not os.path.exists(WORKSPACE):
+    WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 DATA_PATH = os.path.join(WORKSPACE, "data", "tokenized_sequences.pkl")
 MODEL_SAVE_DIR = os.path.join(WORKSPACE, "models")
 BEST_MODEL_PATH = os.path.join(MODEL_SAVE_DIR, "best_model.keras")

@@ -150,16 +150,23 @@ def generate_midi(req: GenerateRequest):
             midi_bytes = f.read()
         midi_base64 = base64.b64encode(midi_bytes).decode("utf-8")
         
-        # Extract notes structure for custom piano roll visualizer
+        # Extract notes structure in seconds for synchronized custom piano roll visualizer
         notes_data = []
-        if len(score.tracks) > 0:
-            for note in score.tracks[0].notes:
+        try:
+            score_to_process = score.to("second")
+        except Exception:
+            score_to_process = score
+
+        for track in score_to_process.tracks:
+            for note in track.notes:
                 notes_data.append({
                     "pitch": int(note.pitch),
-                    "time": float(note.time),
-                    "duration": float(note.duration),
+                    "time": round(float(note.time), 4),
+                    "duration": round(float(note.duration), 4),
                     "velocity": int(note.velocity)
                 })
+
+        notes_data.sort(key=lambda n: n["time"])
         
         # Remove temporary file
         if os.path.exists(temp_midi_path):

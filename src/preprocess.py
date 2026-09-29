@@ -2,10 +2,16 @@ import os
 import pickle
 import symusic
 from tqdm import tqdm
-from tokenizer import get_tokenizer
+try:
+    from src.tokenizer import get_tokenizer
+except ImportError:
+    from tokenizer import get_tokenizer
 
-# Paths
-WORKSPACE = "/Users/vaibhavarya/Developer/music-generator"
+# Paths (supporting dynamic fallback for portability)
+WORKSPACE = os.getenv("WORKSPACE_PATH", "/Users/vaibhavarya/Developer/music-generator")
+if not os.path.exists(WORKSPACE):
+    WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 DATA_DIR = os.path.join(WORKSPACE, "data", "midi_dataset")
 SAVE_PATH = os.path.join(WORKSPACE, "data", "tokenized_sequences.pkl")
 
